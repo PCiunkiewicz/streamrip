@@ -3,12 +3,12 @@ import logging
 import os
 from dataclasses import dataclass
 
-from streamrip import converter
+from pathvalidate import sanitize_filename
+
 from streamrip.client import DeezerClient, Downloadable
 from streamrip.config import Config
 from streamrip.db import Database
 from streamrip.exceptions import NonStreamableError
-from streamrip.filepath_utils import clean_filename
 from streamrip.media.artwork import download_artwork
 from streamrip.media.media import Media, Pending
 from streamrip.media.semaphore import global_download_semaphore
@@ -49,9 +49,7 @@ class Track(Media):
                     await self.downloadable.download(self.download_path, callback)
                     retry = False
                 except Exception as e:
-                    logger.error(
-                        f"Error downloading track '{self.meta.title}', retrying: {e}"
-                    )
+                    logger.error(f"Error downloading track '{self.meta.title}', retrying: {e}")
                     retry = True
 
             if not retry:
@@ -65,42 +63,21 @@ class Track(Media):
                 try:
                     await self.downloadable.download(self.download_path, callback)
                 except Exception as e:
-                    logger.error(
-                        f"Persistent error downloading track '{self.meta.title}', skipping: {e}"
-                    )
-                    self.db.set_failed(
-                        self.downloadable.source, "track", self.meta.info.id
-                    )
+                    logger.error(f"Persistent error downloading track '{self.meta.title}', skipping: {e}")
+                    self.db.set_failed(self.downloadable.source, "track", self.meta.info.id)
 
     async def postprocess(self):
         if self.is_single:
             remove_title(self.meta.title)
 
         await tag_file(self.download_path, self.meta, self.cover_path)
-        if self.config.session.conversion.enabled:
-            await self._convert()
 
         self.db.set_downloaded(self.meta.info.id)
-
-    async def _convert(self):
-        c = self.config.session.conversion
-        engine_class = converter.get(c.codec)
-        engine = engine_class(
-            filename=self.download_path,
-            sampling_rate=c.sampling_rate,
-            bit_depth=c.bit_depth,
-            remove_source=True,  # always going to delete the old file
-        )
-        await engine.convert()
-        self.download_path = engine.final_fn  # because the extension changed
 
     def _set_download_path(self):
         c = self.config.session.filepaths
         formatter = c.track_format
-        track_path = clean_filename(
-            self.meta.format_track_path(formatter),
-            restrict=c.restrict_characters,
-        )
+        track_path = str(sanitize_filename((self.meta.format_track_path(formatter))))
         if c.truncate_to > 0 and len(track_path) > c.truncate_to:
             track_path = track_path[: c.truncate_to]
 
@@ -150,9 +127,7 @@ class PendingTrack(Pending):
         try:
             downloadable = await self.client.get_downloadable(self.id, quality)
         except NonStreamableError as e:
-            logger.error(
-                f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}"
-            )
+            logger.error(f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}")
             return None
 
         return Track(

@@ -49,21 +49,6 @@ class DatabaseConfig:
 
 
 @dataclass(slots=True)
-class ConversionConfig:
-    enabled: bool
-    # FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
-    codec: str
-    # In Hz. Tracks are downsampled if their sampling rate is greater than this.
-    # Value of 48000 is recommended to maximize quality and minimize space
-    sampling_rate: int
-    # Only 16 and 24 are available. It is only applied when the bit depth is higher
-    # than this value.
-    bit_depth: int
-    # Only applicable for lossy codecs
-    lossy_bitrate: int
-
-
-@dataclass(slots=True)
 class ArtworkConfig:
     # Write the image to the audio file
     embed: bool
@@ -71,14 +56,6 @@ class ArtworkConfig:
     # "original" images can be up to 30MB, and may fail embedding.
     # Using "large" is recommended.
     embed_size: str
-    # Both of these options limit the size of the embedded artwork. If their values
-    # are larger than the actual dimensions of the image, they will be ignored.
-    # If either value is -1, the image is left untouched.
-    embed_max_width: int
-    # Save the cover image at the highest quality as a seperate jpg file
-    save_artwork: bool
-    # If artwork is saved, downscale it to these dimensions, or ignore if -1
-    saved_max_width: int
 
 
 @dataclass(slots=True)
@@ -105,8 +82,6 @@ class FilepathsConfig:
     # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
     # and "albumcomposer"
     track_format: str
-    # Only allow printable ASCII characters in filenames.
-    restrict_characters: bool
     # Truncate the filename if it is greater than 120 characters
     # Setting this to false may cause downloads to fail on some systems
     truncate_to: int
@@ -116,9 +91,7 @@ class FilepathsConfig:
 class DownloadsConfig:
     # Folder where tracks are downloaded to
     folder: str
-    # Download (and convert) tracks all at once, instead of sequentially.
-    # If you are converting the tracks, or have fast internet, this will
-    # substantially improve processing speed.
+    # Download tracks all at once, instead of sequentially.
     concurrency: bool
     # The maximum number of tracks to download at once
     # If you have very fast internet, you will benefit from a higher value,
@@ -166,7 +139,6 @@ class ConfigData:
 
     cli: CliConfig
     database: DatabaseConfig
-    conversion: ConversionConfig
 
     misc: MiscConfig
 
@@ -188,7 +160,6 @@ class ConfigData:
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
         cli = CliConfig(**toml["cli"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
-        conversion = ConversionConfig(**toml["conversion"])  # type: ignore
         misc = MiscConfig(**toml["misc"])  # type: ignore
 
         return cls(
@@ -200,7 +171,6 @@ class ConfigData:
             metadata=metadata,
             cli=cli,
             database=database,
-            conversion=conversion,
             misc=misc,
         )
 
@@ -224,7 +194,6 @@ class ConfigData:
         update_toml_section_from_config(self.toml["metadata"], self.metadata)
         update_toml_section_from_config(self.toml["cli"], self.cli)
         update_toml_section_from_config(self.toml["database"], self.database)
-        update_toml_section_from_config(self.toml["conversion"], self.conversion)
 
 
 def update_toml_section_from_config(toml_section, config):

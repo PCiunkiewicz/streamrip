@@ -52,10 +52,7 @@ class ArtistSummary(Summary):
             or item.get("performer", {}).get("name")
             or item.get("artist")
             or item.get("artist", {}).get("name")
-            or (
-                item.get("publisher_metadata")
-                and item["publisher_metadata"].get("artist")
-            )
+            or (item.get("publisher_metadata") and item["publisher_metadata"].get("artist"))
             or "Unknown"
         )
         num_albums = item.get("albums_count") or "Unknown"
@@ -87,10 +84,7 @@ class TrackSummary(Summary):
             item.get("performer", {}).get("name")
             or item.get("artist")
             or item.get("artist", {}).get("name")
-            or (
-                item.get("publisher_metadata")
-                and item["publisher_metadata"].get("artist")
-            )
+            or (item.get("publisher_metadata") and item["publisher_metadata"].get("artist"))
             or "Unknown"
         )
         if isinstance(artist, dict) and "name" in artist:
@@ -135,10 +129,7 @@ class AlbumSummary(Summary):
             item.get("performer", {}).get("name")
             or item.get("artist", {}).get("name")
             or item.get("artist")
-            or (
-                item.get("publisher_metadata")
-                and item["publisher_metadata"].get("artist")
-            )
+            or (item.get("publisher_metadata") and item["publisher_metadata"].get("artist"))
             or "Unknown"
         )
         num_tracks = (
@@ -159,27 +150,6 @@ class AlbumSummary(Summary):
             or "Unknown"
         )
         return cls(id, name, artist, str(num_tracks), date_released)
-
-
-@dataclass(slots=True)
-class LabelSummary(Summary):
-    id: str
-    name: str
-
-    def media_type(self):
-        return "label"
-
-    def summarize(self) -> str:
-        return str(self)
-
-    def preview(self) -> str:
-        return str(self)
-
-    @classmethod
-    def from_item(cls, item: dict):
-        id = str(item["id"])
-        name = item["name"]
-        return cls(id, name)
 
 
 @dataclass(slots=True)
@@ -237,8 +207,6 @@ class SearchResults:
             summary_type = TrackSummary
         elif media_type == "album":
             summary_type = AlbumSummary
-        elif media_type == "label":
-            summary_type = LabelSummary
         elif media_type == "artist":
             summary_type = ArtistSummary
         elif media_type == "playlist":

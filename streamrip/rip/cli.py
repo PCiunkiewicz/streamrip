@@ -2,18 +2,13 @@ import asyncio
 import logging
 from functools import wraps
 
-import aiohttp
 import click
-from click_help_colors import HelpColorsGroup  # type: ignore
+from click_help_colors import HelpColorsGroup
 from rich.logging import RichHandler
 from rich.traceback import install
 
 from streamrip import db
-from streamrip.config import (
-    DEFAULT_CONFIG_PATH,
-    Config,
-    OutdatedConfigError,
-)
+from streamrip.config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError
 from streamrip.console import console
 from streamrip.rip.main import Main
 
@@ -76,9 +71,7 @@ def rip(
     if verbose:
         install(
             console=console,
-            suppress=[
-                click,
-            ],
+            suppress=[click],
             show_locals=True,
             locals_hide_sunder=False,
         )
@@ -112,35 +105,10 @@ def rip(
         c.session.database.downloads_enabled = False
     if folder is not None:
         c.session.downloads.folder = folder
-
     if no_ssl:
         c.session.downloads.verify_ssl = False
 
     ctx.obj["config"] = c
-
-
-@rip.command()
-@click.argument("urls", nargs=-1, required=True)
-@click.pass_context
-@coro
-async def url(ctx, urls):
-    """Download content from URLs."""
-    if ctx.obj["config"] is None:
-        return
-
-    try:
-        with ctx.obj["config"] as cfg:
-            cfg: Config
-            async with Main(cfg) as main:
-                await main.add_all(urls)
-                await main.resolve()
-                await main.rip()
-
-    except aiohttp.ClientConnectorCertificateError as e:
-        from ..utils.ssl_utils import print_ssl_error_help
-
-        console.print(f"[red]SSL Certificate verification error: {e}[/red]")
-        print_ssl_error_help()
 
 
 @rip.command("config")

@@ -75,8 +75,7 @@ class DatabaseBase(DatabaseInterface):
         """Create a database."""
         with sqlite3.connect(self.path) as conn:
             params = ", ".join(
-                f"{key} {' '.join(map(str.upper, props))} NOT NULL"
-                for key, props in self.structure.items()
+                f"{key} {' '.join(map(str.upper, props))} NOT NULL" for key, props in self.structure.items()
             )
             command = f"CREATE TABLE {self.name} ({params})"
 
@@ -95,9 +94,7 @@ class DatabaseBase(DatabaseInterface):
         :rtype: bool
         """
         allowed_keys = set(self.structure.keys())
-        assert all(key in allowed_keys for key in items.keys()), (
-            f"Invalid key. Valid keys: {allowed_keys}"
-        )
+        assert all(key in allowed_keys for key in items.keys()), f"Invalid key. Valid keys: {allowed_keys}"
 
         items = {k: str(v) for k, v in items.items()}
 

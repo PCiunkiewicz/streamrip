@@ -3,12 +3,13 @@ import logging
 import os
 from dataclasses import dataclass
 
+from pathvalidate import sanitize_filepath
+
 from streamrip import progress
 from streamrip.client import DeezerClient
 from streamrip.config import Config
 from streamrip.db import Database
 from streamrip.exceptions import NonStreamableError
-from streamrip.filepath_utils import clean_filepath
 from streamrip.media.artwork import download_artwork
 from streamrip.media.media import Media, Pending
 from streamrip.media.track import PendingTrack
@@ -41,9 +42,7 @@ class Album(Media):
                 logger.error(f"Error downloading track: {e}")
 
         os.makedirs(self.folder, exist_ok=True)
-        results = await asyncio.gather(
-            *[_resolve_and_download(p) for p in self.tracks], return_exceptions=True
-        )
+        results = await asyncio.gather(*[_resolve_and_download(p) for p in self.tracks], return_exceptions=True)
 
         for result in results:
             if isinstance(result, Exception):
@@ -108,8 +107,6 @@ class PendingAlbum(Pending):
     def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
         config = self.config.session
         formatter = config.filepaths.folder_format
-        folder = clean_filepath(
-            meta.format_folder_path(formatter), config.filepaths.restrict_characters
-        )
+        folder = str(sanitize_filepath(meta.format_folder_path(formatter)))
 
         return os.path.join(parent, folder)

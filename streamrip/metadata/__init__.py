@@ -4,12 +4,10 @@ from streamrip.metadata import util
 from streamrip.metadata.album import AlbumInfo, AlbumMetadata
 from streamrip.metadata.artist import ArtistMetadata
 from streamrip.metadata.covers import Covers
-from streamrip.metadata.label import LabelMetadata
 from streamrip.metadata.playlist import PlaylistMetadata
 from streamrip.metadata.search_results import (
     AlbumSummary,
     ArtistSummary,
-    LabelSummary,
     PlaylistSummary,
     SearchResults,
     Summary,
@@ -25,8 +23,6 @@ __all__ = [
     "ArtistMetadata",
     "ArtistSummary",
     "Covers",
-    "LabelMetadata",
-    "LabelSummary",
     "PlaylistMetadata",
     "PlaylistSummary",
     "SearchResults",

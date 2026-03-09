@@ -19,7 +19,7 @@ class Media(ABC):
 
     @abstractmethod
     async def postprocess(self):
-        """Update database, run conversion, delete garbage files etc."""
+        """Update database, delete garbage files etc."""
         raise NotImplementedError
 
 

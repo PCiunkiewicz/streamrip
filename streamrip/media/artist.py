@@ -33,9 +33,7 @@ class Artist(Media):
         pass
 
     async def download(self):
-        console.log(
-            "Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while."
-        )
+        console.log("Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while.")
         await self._resolve_then_download()
 
     async def postprocess(self):
@@ -47,9 +45,7 @@ class Artist(Media):
         This is used if the repeat filter is turned on, since we need the titles
         of all albums to remove repeated items.
         """
-        resolved_or_none: list[Album | None] = await asyncio.gather(
-            *[album.resolve() for album in self.albums]
-        )
+        resolved_or_none: list[Album | None] = await asyncio.gather(*[album.resolve() for album in self.albums])
         resolved = [a for a in resolved_or_none if a is not None]
         filtered_albums = self._apply_filters(resolved)
         batches = self.batch([a.rip() for a in filtered_albums], RESOLVE_CHUNK_SIZE)
@@ -109,9 +105,7 @@ class Artist(Media):
 
         return unique_albums
 
-    _extra_re = re.compile(
-        r"(?i)(anniversary|deluxe|live|collector|demo|expanded|remix)"
-    )
+    _extra_re = re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded|remix)")
 
     # ----- Filter predicates -----
     def _non_studio_albums(self, a: Album) -> bool:
@@ -170,8 +164,5 @@ class PendingArtist(Pending):
             )
             return None
 
-        albums = [
-            PendingAlbum(album_id, self.client, self.config, self.db)
-            for album_id in meta.album_ids()
-        ]
+        albums = [PendingAlbum(album_id, self.client, self.config, self.db) for album_id in meta.album_ids()]
         return Artist(meta.name, albums, self.client, self.config)

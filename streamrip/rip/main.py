@@ -12,14 +12,12 @@ from streamrip.media import (
     Pending,
     PendingAlbum,
     PendingArtist,
-    PendingLabel,
     PendingPlaylist,
     PendingSingle,
     remove_artwork_tempdirs,
 )
 from streamrip.metadata import SearchResults
 from streamrip.progress import clear_progress
-from streamrip.rip.parse_url import parse_url
 from streamrip.rip.prompter import DeezerCredentialPrompter
 
 logger = logging.getLogger("streamrip")
@@ -73,20 +71,6 @@ class Main:
 
         return self._client
 
-    async def add(self, url: str):
-        """Add url as a pending item.
-
-        Do not `asyncio.gather` calls to this! Use `add_all` for concurrency.
-        """
-        parsed = parse_url(url)
-        if parsed is None:
-            raise Exception(f"Unable to parse url {url}")
-
-        self.pending.append(
-            await parsed.into_pending(await self.client, self.config, self.database),
-        )
-        logger.debug("Added url=%s", url)
-
     async def add_all_by_id(self, info: list[tuple[str, str]]):
         for media_type, id in info:
             self._add_by_id_client(await self.client, media_type, id)
@@ -98,8 +82,6 @@ class Main:
             item = PendingAlbum(id, client, self.config, self.database)
         elif media_type == "playlist":
             item = PendingPlaylist(id, client, self.config, self.database)
-        elif media_type == "label":
-            item = PendingLabel(id, client, self.config, self.database)
         elif media_type == "artist":
             item = PendingArtist(id, client, self.config, self.database)
         else:
@@ -107,42 +89,18 @@ class Main:
 
         self.pending.append(item)
 
-    async def add_all(self, urls: list[str]):
-        """Add multiple urls concurrently as pending items."""
-        parsed = [parse_url(url) for url in urls]
-        url_client_pairs = []
-        for i, p in enumerate(parsed):
-            if p is None:
-                console.print(
-                    f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping.",
-                )
-                continue
-            url_client_pairs.append((p, await self.client))
-
-        pendings = await asyncio.gather(
-            *[
-                url.into_pending(client, self.config, self.database)
-                for url, client in url_client_pairs
-            ],
-        )
-        self.pending.extend(pendings)
-
     async def resolve(self):
         """Resolve all currently pending items."""
         with console.status("Resolving URLs...", spinner="dots"):
             coros = [p.resolve() for p in self.pending]
-            new_media: list[Media] = [
-                m for m in await asyncio.gather(*coros) if m is not None
-            ]
+            new_media: list[Media] = [m for m in await asyncio.gather(*coros) if m is not None]
 
         self.media.extend(new_media)
         self.pending.clear()
 
     async def rip(self):
         """Download all resolved items."""
-        results = await asyncio.gather(
-            *[item.rip() for item in self.media], return_exceptions=True
-        )
+        results = await asyncio.gather(*[item.rip() for item in self.media], return_exceptions=True)
 
         failed_items = 0
         for result in results:
@@ -152,9 +110,7 @@ class Main:
 
         if failed_items > 0:
             total_items = len(self.media)
-            logger.info(
-                f"Download completed with {failed_items} failed items out of {total_items} total items."
-            )
+            logger.info(f"Download completed with {failed_items} failed items out of {total_items} total items.")
 
     async def search_interactive(self, media_type: str, query: str):
         with console.status("[bold]Searching Deezer", spinner="dots"):
@@ -168,10 +124,7 @@ class Main:
             search_results.summaries(),
             preview_command=search_results.preview,
             preview_size=0.5,
-            title=(
-                f"Results for {media_type} '{query}' from Deezer\n"
-                "SPACE - select, ENTER - download, ESC - exit"
-            ),
+            title=(f"Results for {media_type} '{query}' from Deezer\nSPACE - select, ENTER - download, ESC - exit"),
             cycle_cursor=True,
             clear_screen=True,
             multi_select=True,

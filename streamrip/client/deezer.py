@@ -1,11 +1,9 @@
 import asyncio
 import binascii
-import contextlib
 import hashlib
 import logging
 
 import aiohttp
-import aiolimiter
 import deezer
 from Cryptodome.Cipher import AES
 
@@ -24,16 +22,32 @@ logging.captureWarnings(True)
 
 logger = logging.getLogger("streamrip")
 
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
-)
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
+
+
+def patch_https_connection_pool(**constructor_kwargs):
+    """
+    This allows to override the default parameters of the
+    HTTPConnectionPool constructor.
+    For example, to increase the poolsize to fix problems
+    with "HttpSConnectionPool is full, discarding connection"
+    call this function with maxsize=16 (or whatever size
+    you want to give to the connection pool)
+    """
+    from urllib3 import connectionpool, poolmanager
+
+    class PatchedHTTPSConnectionPool(connectionpool.HTTPSConnectionPool):
+        def __init__(self, *args, **kwargs):
+            kwargs.update(constructor_kwargs)
+            super(PatchedHTTPSConnectionPool, self).__init__(*args, **kwargs)
+
+    poolmanager.pool_classes_by_scheme["https"] = PatchedHTTPSConnectionPool
 
 
 class DeezerClient:
     """Client to handle deezer API. Does not do rate limiting.
 
     Attributes:
-        global_config: Entire config object
         client: client from deezer py used for API requests
         logged_in: True if logged in
         config: deezer local config
@@ -47,25 +61,14 @@ class DeezerClient:
     logged_in: bool
 
     def __init__(self, config: Config):
-        self.global_config = config
+        self.verify_ssl = config.session.downloads.verify_ssl
         self.client = deezer.Deezer()
+        patch_https_connection_pool(maxsize=100)
         self.logged_in = False
         self.config = config.session.deezer
 
     @staticmethod
-    def get_rate_limiter(
-        requests_per_min: int,
-    ) -> aiolimiter.AsyncLimiter | contextlib.nullcontext:
-        return (
-            aiolimiter.AsyncLimiter(requests_per_min, 60)
-            if requests_per_min > 0
-            else contextlib.nullcontext()
-        )
-
-    @staticmethod
-    async def get_session(
-        headers: dict | None = None, verify_ssl: bool = True
-    ) -> aiohttp.ClientSession:
+    async def get_session(headers: dict | None = None, verify_ssl: bool = True) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
 
@@ -80,9 +83,7 @@ class DeezerClient:
 
     async def login(self):
         # Used for track downloads
-        self.session = await self.get_session(
-            verify_ssl=self.global_config.session.downloads.verify_ssl
-        )
+        self.session = await self.get_session(verify_ssl=self.verify_ssl)
         arl = self.config.arl
         if not arl:
             raise MissingCredentialsError
@@ -186,9 +187,7 @@ class DeezerClient:
             (3, "MP3_320"),  # quality 1
             (1, "FLAC"),  # quality 2
         ]
-        size_map = [
-            int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
-        ]
+        size_map = [int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map]
         dl_info["quality_to_size"] = size_map
 
         # Check if requested quality is available
@@ -204,9 +203,7 @@ class DeezerClient:
                     quality -= 1
             else:
                 # No fallback - raise error
-                raise NonStreamableError(
-                    f"The requested quality {quality} is not available and fallback is disabled."
-                )
+                raise NonStreamableError(f"The requested quality {quality} is not available and fallback is disabled.")
 
         # Update the quality in dl_info to reflect the final quality used
         dl_info["quality"] = quality

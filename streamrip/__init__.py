@@ -1,5 +1,5 @@
-from . import converter, db, exceptions, media, metadata
-from .config import Config
+from streamrip import db, exceptions, media, metadata
+from streamrip.config import Config
 
-__all__ = ["Config", "converter", "db", "exceptions", "media", "metadata"]
+__all__ = ["Config", "db", "exceptions", "media", "metadata"]
 __version__ = "2.2.0"

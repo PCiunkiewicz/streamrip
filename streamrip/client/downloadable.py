@@ -121,9 +121,7 @@ class DeezerDownloadable(Downloadable):
         self.session = session
         self.url = info["url"]
         self.source: str = "deezer"
-        qualities_available = [
-            i for i, size in enumerate(info["quality_to_size"]) if size > 0
-        ]
+        qualities_available = [i for i, size in enumerate(info["quality_to_size"]) if size > 0]
         if len(qualities_available) == 0:
             raise NonStreamableError(
                 "Missing download info. Skipping.",
@@ -155,9 +153,7 @@ class DeezerDownloadable(Downloadable):
 
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
-                await fast_async_download(
-                    path, self.url, self.session.headers, callback
-                )
+                await fast_async_download(path, self.url, self.session.headers, callback)
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
@@ -178,10 +174,7 @@ class DeezerDownloadable(Downloadable):
                     for i in range(0, buflen, encrypt_chunk_size):
                         data = buf[i : min(i + encrypt_chunk_size, buflen)]
                         if len(data) >= 2048:
-                            decrypted_chunk = (
-                                self._decrypt_chunk(blowfish_key, data[:2048])
-                                + data[2048:]
-                            )
+                            decrypted_chunk = self._decrypt_chunk(blowfish_key, data[:2048]) + data[2048:]
                         else:
                             decrypted_chunk = data
                         await audio.write(decrypted_chunk)
@@ -228,9 +221,7 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
         return
 
     it = iter(paths)
-    num_batches = len(paths) // max_files_open + (
-        1 if len(paths) % max_files_open != 0 else 0
-    )
+    num_batches = len(paths) // max_files_open + (1 if len(paths) % max_files_open != 0 else 0)
     tempdir = tempfile.gettempdir()
     outpaths = [
         os.path.join(

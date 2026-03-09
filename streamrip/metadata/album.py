@@ -4,7 +4,8 @@ import logging
 import re
 from dataclasses import dataclass
 
-from streamrip.filepath_utils import clean_filename, clean_filepath
+from pathvalidate import sanitize_filename, sanitize_filepath
+
 from streamrip.metadata.covers import Covers
 from streamrip.metadata.util import safe_get
 
@@ -67,17 +68,17 @@ class AlbumMetadata:
 
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
-            "albumartist": clean_filename(self.albumartist),
-            "albumcomposer": clean_filename(self.albumcomposer or "") or none_str,
+            "albumartist": str(sanitize_filename(self.albumartist)),
+            "albumcomposer": str(sanitize_filename(self.albumcomposer or "")) or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
-            "title": clean_filename(self.album),
+            "title": str(sanitize_filename(self.album)),
             "year": self.year,
             "container": self.info.container,
         }
 
-        return clean_filepath(formatter.format(**info))
+        return str(sanitize_filepath(formatter.format(**info)))
 
     @classmethod
     def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
@@ -94,9 +95,7 @@ class AlbumMetadata:
         albumcomposer = None
         label = resp.get("label")
         booklets = None
-        explicit = bool(
-            resp.get("parental_warning", False) or resp.get("explicit_lyrics", False)
-        )
+        explicit = bool(resp.get("parental_warning", False) or resp.get("explicit_lyrics", False))
 
         # not embedded
         quality = 2

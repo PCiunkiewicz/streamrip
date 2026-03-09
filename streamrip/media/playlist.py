@@ -3,12 +3,13 @@ import logging
 import os
 from dataclasses import dataclass
 
+from pathvalidate import sanitize_filepath
+
 from streamrip import progress
 from streamrip.client import DeezerClient
 from streamrip.config import Config
 from streamrip.db import Database
 from streamrip.exceptions import NonStreamableError
-from streamrip.filepath_utils import clean_filepath
 from streamrip.media.artwork import download_artwork
 from streamrip.media.media import Media, Pending
 from streamrip.media.track import Track
@@ -160,7 +161,7 @@ class PendingPlaylist(Pending):
             return None
         name = meta.name
         parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(name))
+        folder = os.path.join(parent, str(sanitize_filepath(name)))
         tracks = [
             PendingPlaylistTrack(
                 id,

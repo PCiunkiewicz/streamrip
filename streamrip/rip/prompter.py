@@ -15,11 +15,10 @@ class DeezerCredentialPrompter:
 
     def __init__(self, config: Config, client: DeezerClient):
         self.config = config
-        self.client = self.type_check_client(client)
+        self.client = client
 
     def has_creds(self):
-        c = self.config.session.deezer
-        return c.arl != ""
+        return self.config.session.deezer.arl != ""
 
     async def prompt_and_login(self):
         if not self.has_creds():
@@ -38,18 +37,9 @@ class DeezerCredentialPrompter:
             "If you're not sure how to find the ARL cookie, see the instructions at ",
             "[blue underline]https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
         )
-        c = self.config.session.deezer
-        c.arl = Prompt.ask("Enter your [bold]ARL")
+        self.config.session.deezer.arl = Prompt.ask("Enter your [bold]ARL")
 
     def save(self):
-        c = self.config.session.deezer
-        cf = self.config.file.deezer
-        cf.arl = c.arl
+        self.config.file.deezer.arl = self.config.session.deezer.arl
         self.config.file.set_modified()
-        console.print(
-            f"[green]Credentials saved to config file at [bold cyan]{self.config.path}",
-        )
-
-    def type_check_client(self, client) -> DeezerClient:
-        assert isinstance(client, DeezerClient)
-        return client
+        console.print(f"[green]Credentials saved to config file at [bold cyan]{self.config.path}")

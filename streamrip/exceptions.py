@@ -11,21 +11,6 @@ class MissingCredentialsError(Exception):
     """MissingCredentials."""
 
 
-class IneligibleError(Exception):
-    """IneligibleError.
-
-    Raised when the account is not eligible to stream a track.
-    """
-
-
-class InvalidAppIdError(Exception):
-    """InvalidAppIdError."""
-
-
-class InvalidAppSecretError(Exception):
-    """InvalidAppSecretError."""
-
-
 class NonStreamableError(Exception):
     """Item is not streamable.
 
@@ -64,7 +49,3 @@ class NonStreamableError(Exception):
             )
 
         return " ".join(base_msg)
-
-
-class ConversionError(Exception):
-    """ConversionError."""
