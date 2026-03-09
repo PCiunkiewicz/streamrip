@@ -3,17 +3,17 @@ import logging
 import os
 from dataclasses import dataclass
 
-from .. import progress
-from ..client import Client
-from ..config import Config
-from ..db import Database
-from ..exceptions import NonStreamableError
-from ..filepath_utils import clean_filepath
-from ..metadata import AlbumMetadata
-from ..metadata.util import get_album_track_ids
-from .artwork import download_artwork
-from .media import Media, Pending
-from .track import PendingTrack
+from streamrip import progress
+from streamrip.client import DeezerClient
+from streamrip.config import Config
+from streamrip.db import Database
+from streamrip.exceptions import NonStreamableError
+from streamrip.filepath_utils import clean_filepath
+from streamrip.media.artwork import download_artwork
+from streamrip.media.media import Media, Pending
+from streamrip.media.track import PendingTrack
+from streamrip.metadata import AlbumMetadata
+from streamrip.metadata.util import get_album_track_ids
 
 logger = logging.getLogger("streamrip")
 
@@ -40,6 +40,7 @@ class Album(Media):
             except Exception as e:
                 logger.error(f"Error downloading track: {e}")
 
+        os.makedirs(self.folder, exist_ok=True)
         results = await asyncio.gather(
             *[_resolve_and_download(p) for p in self.tracks], return_exceptions=True
         )
@@ -55,7 +56,7 @@ class Album(Media):
 @dataclass(slots=True)
 class PendingAlbum(Pending):
     id: str
-    client: Client
+    client: DeezerClient
     config: Config
     db: Database
 
@@ -69,7 +70,7 @@ class PendingAlbum(Pending):
             return None
 
         try:
-            meta = AlbumMetadata.from_album_resp(resp, self.client.source)
+            meta = AlbumMetadata.from_album_resp(resp)
         except Exception as e:
             logger.error(f"Error building album metadata for {id=}: {e}")
             return None
@@ -80,16 +81,14 @@ class PendingAlbum(Pending):
             )
             return None
 
-        tracklist = get_album_track_ids(self.client.source, resp)
+        tracklist = get_album_track_ids(resp)
         folder = self.config.session.downloads.folder
         album_folder = self._album_folder(folder, meta)
-        os.makedirs(album_folder, exist_ok=True)
-        embed_cover, _ = await download_artwork(
+        embed_cover = await download_artwork(
             self.client.session,
-            album_folder,
+            folder,
             meta.covers,
             self.config.session.artwork,
-            for_playlist=False,
         )
         pending_tracks = [
             PendingTrack(
@@ -108,8 +107,6 @@ class PendingAlbum(Pending):
 
     def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
         config = self.config.session
-        if config.downloads.source_subdirectories:
-            parent = os.path.join(parent, self.client.source.capitalize())
         formatter = config.filepaths.folder_format
         folder = clean_filepath(
             meta.format_folder_path(formatter), config.filepaths.restrict_characters

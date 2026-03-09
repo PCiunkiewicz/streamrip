@@ -5,9 +5,9 @@ import logging
 import os
 import shutil
 from tempfile import gettempdir
-from typing import Final, Optional
+from typing import Final
 
-from .exceptions import ConversionError
+from streamrip.exceptions import ConversionError
 
 logger = logging.getLogger("streamrip")
 
@@ -26,9 +26,9 @@ class Converter:
     def __init__(
         self,
         filename: str,
-        ffmpeg_arg: Optional[str] = None,
-        sampling_rate: Optional[int] = None,
-        bit_depth: Optional[int] = None,
+        ffmpeg_arg: str | None = None,
+        sampling_rate: int | None = None,
+        bit_depth: int | None = None,
         copy_art: bool = True,
         remove_source: bool = False,
         show_progress: bool = False,
@@ -71,7 +71,7 @@ class Converter:
 
         logger.debug("FFmpeg codec extra argument: %s", self.ffmpeg_arg)
 
-    async def convert(self, custom_fn: Optional[str] = None):
+    async def convert(self, custom_fn: str | None = None):
         """Convert the file.
 
         :param custom_fn: Custom output filename (defaults to the original
@@ -89,7 +89,7 @@ class Converter:
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await process.communicate()
-        if process.returncode == 0 and os.path.isfile(self.tempfile):
+        if process.returncode == 0 and os.path.isfile(self.tempfile):  # noqa
             if self.remove_source:
                 os.remove(self.filename)
                 logger.debug("Source removed: %s", self.filename)

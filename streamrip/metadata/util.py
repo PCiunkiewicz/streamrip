@@ -1,12 +1,8 @@
 import functools
-from typing import Optional, Type, TypeVar
 
 
-def get_album_track_ids(source: str, resp) -> list[str]:
-    tracklist = resp["tracks"]
-    if source == "qobuz":
-        tracklist = tracklist["items"]
-    return [track["id"] for track in tracklist]
+def get_album_track_ids(resp) -> list[str]:
+    return [track["id"] for track in resp["tracks"]]
 
 
 def safe_get(dictionary, *keys, default=None):
@@ -17,17 +13,9 @@ def safe_get(dictionary, *keys, default=None):
     )
 
 
-T = TypeVar("T")
-
-
-def typed(thing, expected_type: Type[T]) -> T:
-    assert isinstance(thing, expected_type)
-    return thing
-
-
 def get_quality_id(
-    bit_depth: Optional[int],
-    sampling_rate: Optional[int | float],
+    bit_depth: int | None,
+    sampling_rate: int | float | None,
 ) -> int:
     """Get the universal quality id from bit depth and sampling rate.
 

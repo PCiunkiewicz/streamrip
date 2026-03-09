@@ -1,31 +1,29 @@
-from .album import Album, PendingAlbum
-from .artist import Artist, PendingArtist
-from .artwork import remove_artwork_tempdirs
-from .label import Label, PendingLabel
-from .media import Media, Pending
-from .playlist import (
-    PendingLastfmPlaylist,
+from streamrip.media.album import Album, PendingAlbum
+from streamrip.media.artist import Artist, PendingArtist
+from streamrip.media.artwork import remove_artwork_tempdirs
+from streamrip.media.label import Label, PendingLabel
+from streamrip.media.media import Media, Pending
+from streamrip.media.playlist import (
     PendingPlaylist,
     PendingPlaylistTrack,
     Playlist,
 )
-from .track import PendingSingle, PendingTrack, Track
+from streamrip.media.track import PendingSingle, PendingTrack, Track
 
 __all__ = [
+    "Album",
+    "Artist",
+    "Label",
     "Media",
     "Pending",
-    "Album",
     "PendingAlbum",
-    "Artist",
     "PendingArtist",
-    "Label",
     "PendingLabel",
-    "Playlist",
     "PendingPlaylist",
-    "PendingLastfmPlaylist",
-    "Track",
-    "PendingTrack",
     "PendingPlaylistTrack",
     "PendingSingle",
+    "PendingTrack",
+    "Playlist",
+    "Track",
     "remove_artwork_tempdirs",
 ]

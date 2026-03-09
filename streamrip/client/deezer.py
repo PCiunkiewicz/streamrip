@@ -1,25 +1,35 @@
 import asyncio
 import binascii
+import contextlib
 import hashlib
 import logging
 
+import aiohttp
+import aiolimiter
 import deezer
 from Cryptodome.Cipher import AES
 
-from ..config import Config
-from ..exceptions import (
+from streamrip.client.downloadable import DeezerDownloadable
+from streamrip.config import Config
+from streamrip.exceptions import (
     AuthenticationError,
     MissingCredentialsError,
     NonStreamableError,
 )
-from .client import Client
-from .downloadable import DeezerDownloadable
+from streamrip.utils.ssl_utils import get_aiohttp_connector_kwargs
 
 logger = logging.getLogger("streamrip")
 logging.captureWarnings(True)
 
 
-class DeezerClient(Client):
+logger = logging.getLogger("streamrip")
+
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
+)
+
+
+class DeezerClient:
     """Client to handle deezer API. Does not do rate limiting.
 
     Attributes:
@@ -33,12 +43,40 @@ class DeezerClient(Client):
 
     source = "deezer"
     max_quality = 2
+    session: aiohttp.ClientSession
+    logged_in: bool
 
     def __init__(self, config: Config):
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
+
+    @staticmethod
+    def get_rate_limiter(
+        requests_per_min: int,
+    ) -> aiolimiter.AsyncLimiter | contextlib.nullcontext:
+        return (
+            aiolimiter.AsyncLimiter(requests_per_min, 60)
+            if requests_per_min > 0
+            else contextlib.nullcontext()
+        )
+
+    @staticmethod
+    async def get_session(
+        headers: dict | None = None, verify_ssl: bool = True
+    ) -> aiohttp.ClientSession:
+        if headers is None:
+            headers = {}
+
+        # Get connector kwargs based on SSL verification setting
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
+        connector = aiohttp.TCPConnector(limit=1000, **connector_kwargs)  # type:ignore
+
+        return aiohttp.ClientSession(
+            headers={"User-Agent": DEFAULT_USER_AGENT} | headers,
+            connector=connector,
+        )
 
     async def login(self):
         # Used for track downloads
@@ -116,19 +154,10 @@ class DeezerClient(Client):
 
     async def search(self, media_type: str, query: str, limit: int = 200) -> list[dict]:
         # TODO: use limit parameter
-        if media_type == "featured":
-            try:
-                if query:
-                    search_function = getattr(self.client.api, f"get_editorial_{query}")
-                else:
-                    search_function = self.client.api.get_editorial_releases
-            except AttributeError:
-                raise Exception(f'Invalid editorical selection "{query}"')
-        else:
-            try:
-                search_function = getattr(self.client.api, f"search_{media_type}")
-            except AttributeError:
-                raise Exception(f"Invalid media type {media_type}")
+        try:
+            search_function = getattr(self.client.api, f"search_{media_type}")
+        except AttributeError:
+            raise Exception(f"Invalid media type {media_type}")
 
         response = search_function(query, limit=limit)  # type: ignore
         if response["total"] > 0:
@@ -161,13 +190,13 @@ class DeezerClient(Client):
             int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
         ]
         dl_info["quality_to_size"] = size_map
-        
+
         # Check if requested quality is available
         if size_map[quality] == 0:
             if self.config.lower_quality_if_not_available:
                 # Fallback to lower quality
                 while size_map[quality] == 0 and quality > 0:
-                    logger.warning(
+                    logger.debug(
                         "The requested quality %s is not available. Falling back to quality %s",
                         quality,
                         quality - 1,
@@ -178,7 +207,7 @@ class DeezerClient(Client):
                 raise NonStreamableError(
                     f"The requested quality {quality} is not available and fallback is disabled."
                 )
-        
+
         # Update the quality in dl_info to reflect the final quality used
         dl_info["quality"] = quality
 

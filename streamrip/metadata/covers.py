@@ -1,6 +1,3 @@
-TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
-
-
 class Covers:
     COVER_SIZES = ("thumbnail", "small", "large", "original")
     CoverEntry = tuple[str, str | None, str | None]
@@ -57,44 +54,12 @@ class Covers:
         raise Exception(f"No covers found in {self}")
 
     @classmethod
-    def from_qobuz(cls, resp):
-        img = resp["image"]
-
-        c = cls()
-        c.set_cover_url("original", "org".join(img["large"].rsplit("600", 1)))
-        c.set_cover_url("large", img["large"])
-        c.set_cover_url("small", img["small"])
-        c.set_cover_url("thumbnail", img["thumbnail"])
-        return c
-
-    @classmethod
     def from_deezer(cls, resp):
         c = cls()
         c.set_cover_url("original", resp["cover_xl"])
         c.set_cover_url("large", resp["cover_big"])
         c.set_cover_url("small", resp["cover_medium"])
         c.set_cover_url("thumbnail", resp["cover_small"])
-        return c
-
-    @classmethod
-    def from_soundcloud(cls, resp):
-        c = cls()
-        cover_url = (resp["artwork_url"] or resp["user"].get("avatar_url")).replace(
-            "large",
-            "t500x500",
-        )
-        c.set_cover_url("large", cover_url)
-        return c
-
-    @classmethod
-    def from_tidal(cls, resp):
-        uuid = resp["cover"]
-        if not uuid:
-            return None
-
-        c = cls()
-        for size_name, dimension in zip(cls.COVER_SIZES, (160, 320, 640, 1280)):
-            c.set_cover_url(size_name, cls._get_tidal_cover_url(uuid, dimension))
         return c
 
     def get_size(self, size: str) -> CoverEntry:
@@ -107,21 +72,6 @@ class Covers:
                 if u is not None:
                     return (s, u, p)
         raise Exception(f"Cover not found for {size = }. Available: {self}")
-
-    @staticmethod
-    def _get_tidal_cover_url(uuid, size):
-        """Generate a tidal cover url.
-
-        :param uuid: VALID uuid string
-        :param size:
-        """
-        possibles = (80, 160, 320, 640, 1280)
-        assert size in possibles, f"size must be in {possibles}"
-        return TIDAL_COVER_URL.format(
-            uuid=uuid.replace("-", "/"),
-            height=size,
-            width=size,
-        )
 
     def __repr__(self):
         covers = "\n".join(map(repr, self._covers))

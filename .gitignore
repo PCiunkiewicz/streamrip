@@ -21,3 +21,5 @@ StreamripDownloads
 /.mypy_cache
 .DS_Store
 pyrightconfig.json
+music
+**/.vscode

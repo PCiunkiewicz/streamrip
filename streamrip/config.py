@@ -25,38 +25,6 @@ class OutdatedConfigError(Exception):
 
 
 @dataclass(slots=True)
-class QobuzConfig:
-    use_auth_token: bool
-    email_or_userid: str
-    # This is an md5 hash of the plaintext password
-    password_or_token: str
-    # Do not change
-    app_id: str
-    quality: int
-    # This will download booklet pdfs that are included with some albums
-    download_booklets: bool
-    # Do not change
-    secrets: list[str]
-
-
-@dataclass(slots=True)
-class TidalConfig:
-    # Do not change any of the fields below
-    user_id: str
-    country_code: str
-    access_token: str
-    refresh_token: str
-    # Tokens last 1 week after refresh. This is the Unix timestamp of the expiration
-    # time. If you haven't used streamrip in more than a week, you may have to log
-    # in again using `rip config --tidal`
-    token_expiry: str
-    # 0: 256kbps AAC, 1: 320kbps AAC, 2: 16/44.1 "HiFi" FLAC, 3: 24/44.1 "MQA" FLAC
-    quality: int
-    # This will download videos included in Video Albums.
-    download_videos: bool
-
-
-@dataclass(slots=True)
 class DeezerConfig:
     # An authentication cookie that allows streamrip to use your Deezer account
     # See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
@@ -70,29 +38,6 @@ class DeezerConfig:
     lower_quality_if_not_available: bool
     # This allows for free 320kbps MP3 downloads from Deezer
     # If an arl is provided, deezloader is never used
-    use_deezloader: bool
-    # This warns you when the paid deezer account is not logged in and rip falls
-    # back to deezloader, which is unreliable
-    deezloader_warnings: bool
-
-
-@dataclass(slots=True)
-class SoundcloudConfig:
-    # This changes periodically, so it needs to be updated
-    client_id: str
-    app_version: str
-    # Only 0 is available for now
-    quality: int
-
-
-@dataclass(slots=True)
-class YoutubeConfig:
-    # The path to download the videos to
-    video_downloads_folder: str
-    # Only 0 is available for now
-    quality: int
-    # Download the video along with the audio
-    download_videos: bool
 
 
 @dataclass(slots=True)
@@ -116,22 +61,6 @@ class ConversionConfig:
     bit_depth: int
     # Only applicable for lossy codecs
     lossy_bitrate: int
-
-
-@dataclass(slots=True)
-class QobuzDiscographyFilterConfig:
-    # Remove Collectors Editions, live recordings, etc.
-    extras: bool
-    # Picks the highest quality out of albums with identical titles.
-    repeats: bool
-    # Remove EPs and Singles
-    non_albums: bool
-    # Remove albums whose artist is not the one requested
-    features: bool
-    # Skip non studio albums
-    non_studio_albums: bool
-    # Only download remastered albums
-    non_remaster: bool
 
 
 @dataclass(slots=True)
@@ -187,10 +116,6 @@ class FilepathsConfig:
 class DownloadsConfig:
     # Folder where tracks are downloaded to
     folder: str
-    # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
-    source_subdirectories: bool
-    # Put tracks in an album with 2 or more discs into a subfolder named `Disc N`
-    disc_subdirectories: bool
     # Download (and convert) tracks all at once, instead of sequentially.
     # If you are converting the tracks, or have fast internet, this will
     # substantially improve processing speed.
@@ -199,19 +124,9 @@ class DownloadsConfig:
     # If you have very fast internet, you will benefit from a higher value,
     # A value that is too high for your bandwidth may cause slowdowns
     max_connections: int
-    requests_per_minute: int
     # Verify SSL certificates for API connections
     # Set to false if you encounter SSL certificate verification errors (not recommended)
     verify_ssl: bool
-
-
-@dataclass(slots=True)
-class LastFmConfig:
-    # The source on which to search for the tracks.
-    source: str
-    # If no results were found with the primary source, the item is searched for
-    # on this one.
-    fallback_source: str
 
 
 @dataclass(slots=True)
@@ -234,10 +149,6 @@ HOME = Path.home()
 DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
 DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
 DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
-DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER = os.path.join(
-    DEFAULT_DOWNLOADS_FOLDER,
-    "YouTubeVideos",
-)
 BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
 
@@ -247,17 +158,11 @@ class ConfigData:
     toml: TOMLDocument
     downloads: DownloadsConfig
 
-    qobuz: QobuzConfig
-    tidal: TidalConfig
     deezer: DeezerConfig
-    soundcloud: SoundcloudConfig
-    youtube: YoutubeConfig
-    lastfm: LastFmConfig
 
     filepaths: FilepathsConfig
     artwork: ArtworkConfig
     metadata: MetadataConfig
-    qobuz_filters: QobuzDiscographyFilterConfig
 
     cli: CliConfig
     database: DatabaseConfig
@@ -277,16 +182,10 @@ class ConfigData:
             )
 
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
-        qobuz = QobuzConfig(**toml["qobuz"])  # type: ignore
-        tidal = TidalConfig(**toml["tidal"])  # type: ignore
         deezer = DeezerConfig(**toml["deezer"])  # type: ignore
-        soundcloud = SoundcloudConfig(**toml["soundcloud"])  # type: ignore
-        youtube = YoutubeConfig(**toml["youtube"])  # type: ignore
-        lastfm = LastFmConfig(**toml["lastfm"])  # type: ignore
         artwork = ArtworkConfig(**toml["artwork"])  # type: ignore
         filepaths = FilepathsConfig(**toml["filepaths"])  # type: ignore
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
-        qobuz_filters = QobuzDiscographyFilterConfig(**toml["qobuz_filters"])  # type: ignore
         cli = CliConfig(**toml["cli"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
         conversion = ConversionConfig(**toml["conversion"])  # type: ignore
@@ -295,16 +194,10 @@ class ConfigData:
         return cls(
             toml=toml,
             downloads=downloads,
-            qobuz=qobuz,
-            tidal=tidal,
             deezer=deezer,
-            soundcloud=soundcloud,
-            youtube=youtube,
-            lastfm=lastfm,
             artwork=artwork,
             filepaths=filepaths,
             metadata=metadata,
-            qobuz_filters=qobuz_filters,
             cli=cli,
             database=database,
             conversion=conversion,
@@ -325,34 +218,13 @@ class ConfigData:
 
     def update_toml(self):
         update_toml_section_from_config(self.toml["downloads"], self.downloads)
-        update_toml_section_from_config(self.toml["qobuz"], self.qobuz)
-        update_toml_section_from_config(self.toml["tidal"], self.tidal)
         update_toml_section_from_config(self.toml["deezer"], self.deezer)
-        update_toml_section_from_config(self.toml["soundcloud"], self.soundcloud)
-        update_toml_section_from_config(self.toml["youtube"], self.youtube)
-        update_toml_section_from_config(self.toml["lastfm"], self.lastfm)
         update_toml_section_from_config(self.toml["artwork"], self.artwork)
         update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
         update_toml_section_from_config(self.toml["metadata"], self.metadata)
-        update_toml_section_from_config(self.toml["qobuz_filters"], self.qobuz_filters)
         update_toml_section_from_config(self.toml["cli"], self.cli)
         update_toml_section_from_config(self.toml["database"], self.database)
         update_toml_section_from_config(self.toml["conversion"], self.conversion)
-
-    def get_source(
-        self,
-        source: str,
-    ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig:
-        d = {
-            "qobuz": self.qobuz,
-            "deezer": self.deezer,
-            "soundcloud": self.soundcloud,
-            "tidal": self.tidal,
-        }
-        res = d.get(source)
-        if res is None:
-            raise Exception(f"Invalid source {source}")
-        return res
 
 
 def update_toml_section_from_config(toml_section, config):
@@ -425,7 +297,6 @@ def toml_set_user_defaults(toml: TOMLDocument):
     toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
     toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
     toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
-    toml["youtube"]["video_downloads_folder"] = DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER  # type: ignore
 
 
 def _get_dict_keys_r(d: dict) -> set[tuple]:

@@ -8,11 +8,11 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,  # type: ignore
     ID3,
-    ID3NoHeaderError,
+    ID3NoHeaderError,  # type: ignore
 )
 from mutagen.mp4 import MP4, MP4Cover
 
-from .track import TrackMetadata
+from streamrip.metadata.track import TrackMetadata
 
 logger = logging.getLogger("streamrip")
 
@@ -63,7 +63,7 @@ MP3_KEYS = (
     None,
     None,
     None,
-    id3.TSRC,
+    id3.TSRC,  # type: ignore
 )
 
 METADATA_TYPES = (
@@ -208,7 +208,7 @@ class Container(Enum):
 
     async def embed_cover(self, audio, cover_path):
         if self == Container.FLAC:
-            size = os.path.getsize(cover_path)
+            size = os.path.getsize(cover_path)  # noqa
             if size > FLAC_MAX_BLOCKSIZE:
                 raise Exception("Cover art too big for FLAC")
             cover = Picture()

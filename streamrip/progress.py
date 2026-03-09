@@ -13,7 +13,7 @@ from rich.progress import (
 from rich.rule import Rule
 from rich.text import Text
 
-from .console import console
+from streamrip.console import console
 
 
 class ProgressManager:

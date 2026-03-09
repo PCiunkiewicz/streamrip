@@ -63,9 +63,7 @@ def print_ssl_error_help():
     print("\nError: Cannot verify SSL certificate.")
     print("Options:")
     print("  1. Run again with the --no-ssl-verify flag (less secure)")
-    print(
-        '     Example: rip --no-ssl-verify url "https://tidal.com/browse/playlist/..."'
-    )
+    print('     Example: rip --no-ssl-verify url "https://..."')
     print()
     print("  2. Install certifi for better certificate handling:")
     print("     pip install certifi")

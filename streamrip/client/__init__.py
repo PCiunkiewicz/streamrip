@@ -1,16 +1,8 @@
-from .client import Client
-from .deezer import DeezerClient
-from .downloadable import BasicDownloadable, Downloadable
-from .qobuz import QobuzClient
-from .soundcloud import SoundcloudClient
-from .tidal import TidalClient
+from streamrip.client.deezer import DeezerClient
+from streamrip.client.downloadable import BasicDownloadable, Downloadable
 
 __all__ = [
-    "Client",
-    "DeezerClient",
-    "TidalClient",
-    "QobuzClient",
-    "SoundcloudClient",
-    "Downloadable",
     "BasicDownloadable",
+    "DeezerClient",
+    "Downloadable",
 ]

@@ -3,14 +3,14 @@ import logging
 import re
 from dataclasses import dataclass
 
-from ..client import Client
-from ..config import Config, QobuzDiscographyFilterConfig
-from ..console import console
-from ..db import Database
-from ..exceptions import NonStreamableError
-from ..metadata import ArtistMetadata
-from .album import Album, PendingAlbum
-from .media import Media, Pending
+from streamrip.client import DeezerClient
+from streamrip.config import Config
+from streamrip.console import console
+from streamrip.db import Database
+from streamrip.exceptions import NonStreamableError
+from streamrip.media.album import Album, PendingAlbum
+from streamrip.media.media import Media, Pending
+from streamrip.metadata import ArtistMetadata
 
 logger = logging.getLogger("streamrip")
 
@@ -26,26 +26,22 @@ class Artist(Media):
 
     name: str
     albums: list[PendingAlbum]
-    client: Client
+    client: DeezerClient
     config: Config
 
     async def preprocess(self):
         pass
 
     async def download(self):
-        filter_conf = self.config.session.qobuz_filters
-        if filter_conf.repeats:
-            console.log(
-                "Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while."
-            )
-            await self._resolve_then_download(filter_conf)
-        else:
-            await self._download_async(filter_conf)
+        console.log(
+            "Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while."
+        )
+        await self._resolve_then_download()
 
     async def postprocess(self):
         pass
 
-    async def _resolve_then_download(self, filters: QobuzDiscographyFilterConfig):
+    async def _resolve_then_download(self):
         """Resolve all artist albums, then download.
 
         This is used if the repeat filter is turned on, since we need the titles
@@ -55,46 +51,19 @@ class Artist(Media):
             *[album.resolve() for album in self.albums]
         )
         resolved = [a for a in resolved_or_none if a is not None]
-        filtered_albums = self._apply_filters(resolved, filters)
+        filtered_albums = self._apply_filters(resolved)
         batches = self.batch([a.rip() for a in filtered_albums], RESOLVE_CHUNK_SIZE)
         for batch in batches:
             await asyncio.gather(*batch)
 
-    async def _download_async(self, filters: QobuzDiscographyFilterConfig):
-        async def _rip(item: PendingAlbum):
-            album = await item.resolve()
-            # Skip if album doesn't pass the filter
-            if (
-                album is None
-                or (filters.extras and not self._extras(album))
-                or (filters.features and not self._features(album))
-                or (filters.non_studio_albums and not self._non_studio_albums(album))
-                or (filters.non_remaster and not self._non_remaster(album))
-            ):
-                return
-            await album.rip()
-
-        batches = self.batch(
-            [_rip(album) for album in self.albums],
-            RESOLVE_CHUNK_SIZE,
-        )
-        for batch in batches:
-            await asyncio.gather(*batch)
-
-    def _apply_filters(
-        self, albums: list[Album], filt: QobuzDiscographyFilterConfig
-    ) -> list[Album]:
+    def _apply_filters(self, albums: list[Album]) -> list[Album]:
         _albums = albums
-        if filt.repeats:
-            _albums = self._filter_repeats(_albums)
-        if filt.extras:
-            _albums = filter(self._extras, _albums)
-        if filt.features:
-            _albums = filter(self._features, _albums)
-        if filt.non_studio_albums:
-            _albums = filter(self._non_studio_albums, _albums)
-        if filt.non_remaster:
-            _albums = filter(self._non_remaster, _albums)
+        _albums = self._filter_repeats(_albums)
+        _albums = filter(self._extras, _albums)
+        _albums = filter(self._features, _albums)
+        _albums = filter(self._non_studio_albums, _albums)
+        _albums = filter(self._non_albums, _albums)
+        # _albums = filter(self._non_remaster, _albums) # noqa
         return list(_albums)
 
     # Will not fail on any nonempty string
@@ -180,7 +149,7 @@ class Artist(Media):
 @dataclass(slots=True)
 class PendingArtist(Pending):
     id: str
-    client: Client
+    client: DeezerClient
     config: Config
     db: Database
 
@@ -194,7 +163,7 @@ class PendingArtist(Pending):
             return None
 
         try:
-            meta = ArtistMetadata.from_resp(resp, self.client.source)
+            meta = ArtistMetadata.from_resp(resp)
         except Exception as e:
             logger.error(
                 f"Error building artist metadata: {e}",

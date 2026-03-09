@@ -15,13 +15,6 @@ class ArtistMetadata:
         return self.ids
 
     @classmethod
-    def from_resp(cls, resp: dict, source: str) -> ArtistMetadata:
+    def from_resp(cls, resp: dict) -> ArtistMetadata:
         logger.debug(resp)
-        if source == "qobuz":
-            return cls(resp["name"], [a["id"] for a in resp["albums"]["items"]])
-        elif source == "tidal":
-            return cls(resp["name"], [a["id"] for a in resp["albums"]])
-        elif source == "deezer":
-            return cls(resp["name"], [a["id"] for a in resp["albums"]])
-        else:
-            raise NotImplementedError
+        return cls(resp["name"], [a["id"] for a in resp["albums"]])

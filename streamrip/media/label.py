@@ -2,14 +2,13 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
+from streamrip.client import DeezerClient
+from streamrip.config import Config
+from streamrip.db import Database
 from streamrip.exceptions import NonStreamableError
-
-from ..client import Client
-from ..config import Config
-from ..db import Database
-from ..metadata import LabelMetadata
-from .album import PendingAlbum
-from .media import Media, Pending
+from streamrip.media.album import PendingAlbum
+from streamrip.media.media import Media, Pending
+from streamrip.metadata import LabelMetadata
 
 logger = logging.getLogger("streamrip")
 
@@ -20,7 +19,7 @@ class Label(Media):
 
     name: str
     albums: list[PendingAlbum]
-    client: Client
+    client: DeezerClient
     config: Config
 
     async def preprocess(self):
@@ -58,7 +57,7 @@ class Label(Media):
 @dataclass(slots=True)
 class PendingLabel(Pending):
     id: str
-    client: Client
+    client: DeezerClient
     config: Config
     db: Database
 
@@ -69,7 +68,7 @@ class PendingLabel(Pending):
             logger.error(f"Error resolving Label: {e}")
             return None
         try:
-            meta = LabelMetadata.from_resp(resp, self.client.source)
+            meta = LabelMetadata.from_resp(resp)
         except Exception as e:
             logger.error(f"Error resolving Label: {e}")
             return None

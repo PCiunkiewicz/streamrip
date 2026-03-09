@@ -232,7 +232,7 @@ class SearchResults:
     results: list[Summary]
 
     @classmethod
-    def from_pages(cls, source: str, media_type: str, pages: list[dict]):
+    def from_pages(cls, media_type: str, pages: list[dict]):
         if media_type == "track":
             summary_type = TrackSummary
         elif media_type == "album":
@@ -248,27 +248,13 @@ class SearchResults:
 
         results = []
         for page in pages:
-            if source == "soundcloud":
-                items = page["collection"]
-                for item in items:
-                    results.append(summary_type.from_item(item))
-            elif source == "qobuz":
-                key = media_type + "s"
-                for item in page[key]["items"]:
-                    results.append(summary_type.from_item(item))
-            elif source == "deezer":
-                for item in page["data"]:
-                    results.append(summary_type.from_item(item))
-            elif source == "tidal":
-                for item in page["items"]:
-                    results.append(summary_type.from_item(item))
-            else:
-                raise NotImplementedError
+            for item in page["data"]:
+                results.append(summary_type.from_item(item))
 
         return cls(results)
 
     def summaries(self) -> list[str]:
-        return [f"{i+1}. {r.summarize()}" for i, r in enumerate(self.results)]
+        return [f"{i + 1}. {r.summarize()}" for i, r in enumerate(self.results)]
 
     def get_choices(self, inds: tuple[int, ...] | int):
         if isinstance(inds, int):

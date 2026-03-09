@@ -6,9 +6,9 @@ import shutil
 import aiohttp
 from PIL import Image
 
-from ..client import BasicDownloadable
-from ..config import ArtworkConfig
-from ..metadata import Covers
+from streamrip.client import BasicDownloadable
+from streamrip.config import ArtworkConfig
+from streamrip.metadata import Covers
 
 _artwork_tempdirs: set[str] = set()
 
@@ -29,8 +29,7 @@ async def download_artwork(
     folder: str,
     covers: Covers,
     config: ArtworkConfig,
-    for_playlist: bool,
-) -> tuple[str | None, str | None]:
+) -> str | None:
     """Download artwork and update passed Covers object with filepaths.
 
     If paths for the selected sizes already exist in `covers`, nothing will
@@ -50,35 +49,19 @@ async def download_artwork(
         folder (str):
         covers (Covers):
         config (ArtworkConfig):
-        for_playlist (bool): Set to disable saved hires covers.
 
     Returns:
     -------
         (path to embedded artwork, path to hires artwork)
     """
-    save_artwork, embed = config.save_artwork, config.embed
-    if for_playlist:
-        save_artwork = False
-
-    if not (save_artwork or embed) or covers.empty():
+    if not config.embed or covers.empty():
         # No need to download anything
-        return None, None
+        return None
 
     downloadables = []
 
-    _, l_url, saved_cover_path = covers.largest()
-    if saved_cover_path is None and save_artwork:
-        saved_cover_path = os.path.join(folder, "cover.jpg")
-        assert l_url is not None
-        downloadables.append(
-            BasicDownloadable(session, l_url, "jpg").download(
-                saved_cover_path,
-                lambda _: None,
-            ),
-        )
-
     _, embed_url, embed_cover_path = covers.get_size(config.embed_size)
-    if embed_cover_path is None and embed:
+    if embed_cover_path is None and config.embed:
         assert embed_url is not None
         embed_dir = os.path.join(folder, "__artwork")
         os.makedirs(embed_dir, exist_ok=True)
@@ -92,28 +75,21 @@ async def download_artwork(
         )
 
     if len(downloadables) == 0:
-        return embed_cover_path, saved_cover_path
+        return embed_cover_path
 
     try:
         await asyncio.gather(*downloadables)
     except Exception as e:
         logger.error(f"Error downloading artwork: {e}")
-        return None, None
+        return None
 
-    # Update `covers` to reflect the current download state
-    if save_artwork:
-        assert saved_cover_path is not None
-        covers.set_largest_path(saved_cover_path)
-        if config.saved_max_width > 0:
-            downscale_image(saved_cover_path, config.saved_max_width)
-
-    if embed:
+    if config.embed:
         assert embed_cover_path is not None
         covers.set_path(config.embed_size, embed_cover_path)
         if config.embed_max_width > 0:
             downscale_image(embed_cover_path, config.embed_max_width)
 
-    return embed_cover_path, saved_cover_path
+    return embed_cover_path
 
 
 def downscale_image(input_image_path: str, max_dimension: int):

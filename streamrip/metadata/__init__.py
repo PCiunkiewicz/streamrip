@@ -1,12 +1,12 @@
 """Manages the information that will be embeded in the audio file."""
 
-from . import util
-from .album import AlbumInfo, AlbumMetadata
-from .artist import ArtistMetadata
-from .covers import Covers
-from .label import LabelMetadata
-from .playlist import PlaylistMetadata
-from .search_results import (
+from streamrip.metadata import util
+from streamrip.metadata.album import AlbumInfo, AlbumMetadata
+from streamrip.metadata.artist import ArtistMetadata
+from streamrip.metadata.covers import Covers
+from streamrip.metadata.label import LabelMetadata
+from streamrip.metadata.playlist import PlaylistMetadata
+from streamrip.metadata.search_results import (
     AlbumSummary,
     ArtistSummary,
     LabelSummary,
@@ -15,25 +15,25 @@ from .search_results import (
     Summary,
     TrackSummary,
 )
-from .tagger import tag_file
-from .track import TrackInfo, TrackMetadata
+from streamrip.metadata.tagger import tag_file
+from streamrip.metadata.track import TrackInfo, TrackMetadata
 
 __all__ = [
-    "AlbumMetadata",
-    "ArtistMetadata",
     "AlbumInfo",
-    "TrackInfo",
-    "LabelMetadata",
-    "TrackMetadata",
-    "PlaylistMetadata",
+    "AlbumMetadata",
+    "AlbumSummary",
+    "ArtistMetadata",
+    "ArtistSummary",
     "Covers",
+    "LabelMetadata",
+    "LabelSummary",
+    "PlaylistMetadata",
+    "PlaylistSummary",
+    "SearchResults",
+    "Summary",
+    "TrackInfo",
+    "TrackMetadata",
+    "TrackSummary",
     "tag_file",
     "util",
-    "AlbumSummary",
-    "ArtistSummary",
-    "LabelSummary",
-    "PlaylistSummary",
-    "Summary",
-    "TrackSummary",
-    "SearchResults",
 ]

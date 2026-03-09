@@ -3,17 +3,17 @@ import logging
 import os
 from dataclasses import dataclass
 
-from .. import converter
-from ..client import Client, Downloadable
-from ..config import Config
-from ..db import Database
-from ..exceptions import NonStreamableError
-from ..filepath_utils import clean_filename
-from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
-from ..progress import add_title, get_progress_callback, remove_title
-from .artwork import download_artwork
-from .media import Media, Pending
-from .semaphore import global_download_semaphore
+from streamrip import converter
+from streamrip.client import DeezerClient, Downloadable
+from streamrip.config import Config
+from streamrip.db import Database
+from streamrip.exceptions import NonStreamableError
+from streamrip.filepath_utils import clean_filename
+from streamrip.media.artwork import download_artwork
+from streamrip.media.media import Media, Pending
+from streamrip.media.semaphore import global_download_semaphore
+from streamrip.metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
+from streamrip.progress import add_title, get_progress_callback, remove_title
 
 logger = logging.getLogger("streamrip")
 
@@ -114,7 +114,7 @@ class Track(Media):
 class PendingTrack(Pending):
     id: str
     album: AlbumMetadata
-    client: Client
+    client: DeezerClient
     config: Config
     folder: str
     db: Database
@@ -136,7 +136,7 @@ class PendingTrack(Pending):
             return None
 
         try:
-            meta = TrackMetadata.from_resp(self.album, source, resp)
+            meta = TrackMetadata.from_resp(self.album, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for {self.id}: {e}")
             return None
@@ -146,7 +146,7 @@ class PendingTrack(Pending):
             self.db.set_failed(source, "track", self.id)
             return None
 
-        quality = self.config.session.get_source(source).quality
+        quality = self.config.session.deezer.quality
         try:
             downloadable = await self.client.get_downloadable(self.id, quality)
         except NonStreamableError as e:
@@ -155,17 +155,11 @@ class PendingTrack(Pending):
             )
             return None
 
-        downloads_config = self.config.session.downloads
-        if downloads_config.disc_subdirectories and self.album.disctotal > 1:
-            folder = os.path.join(self.folder, f"Disc {meta.discnumber}")
-        else:
-            folder = self.folder
-
         return Track(
             meta,
             downloadable,
             self.config,
-            folder,
+            self.folder,
             self.cover_path,
             self.db,
         )
@@ -180,7 +174,7 @@ class PendingSingle(Pending):
     """
 
     id: str
-    client: Client
+    client: DeezerClient
     config: Config
     db: Database
 
@@ -196,9 +190,8 @@ class PendingSingle(Pending):
         except NonStreamableError as e:
             logger.error(f"Error fetching track {self.id}: {e}")
             return None
-        # Patch for soundcloud
         try:
-            album = AlbumMetadata.from_track_resp(resp, self.client.source)
+            album = AlbumMetadata.from_track_resp(resp)
         except Exception as e:
             logger.error(f"Error building album metadata for track {id=}: {e}")
             return None
@@ -211,7 +204,7 @@ class PendingSingle(Pending):
             return None
 
         try:
-            meta = TrackMetadata.from_resp(album, self.client.source, resp)
+            meta = TrackMetadata.from_resp(album, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for track {id=}: {e}")
             return None
@@ -252,17 +245,14 @@ class PendingSingle(Pending):
         c = self.config.session
         parent = c.downloads.folder
         formatter = c.filepaths.folder_format
-        if c.downloads.source_subdirectories:
-            parent = os.path.join(parent, self.client.source.capitalize())
 
         return os.path.join(parent, meta.format_folder_path(formatter))
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        embed_path, _ = await download_artwork(
+        embed_path = await download_artwork(
             self.client.session,
             folder,
             covers,
             self.config.session.artwork,
-            for_playlist=False,
         )
         return embed_path
