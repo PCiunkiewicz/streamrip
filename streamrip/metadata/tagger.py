@@ -1,6 +1,8 @@
 import logging
 import os
+import shutil
 from enum import Enum
+from pathlib import Path
 
 import aiofiles
 from mutagen import id3
@@ -10,6 +12,7 @@ from mutagen.id3 import (
     ID3,
     ID3NoHeaderError,  # type: ignore
 )
+from mutagen.mp3 import EasyMP3
 from mutagen.mp4 import MP4, MP4Cover
 
 from streamrip.metadata.track import TrackMetadata
@@ -25,14 +28,9 @@ MP4_KEYS = (
     r"aART",
     "\xa9day",
     "\xa9day",
-    "\xa9cmt",
     "desc",
-    "purd",
-    "\xa9grp",
     "\xa9gen",
-    "\xa9lyr",
     "\xa9too",
-    "cprt",
     "cpil",
     "trkn",
     "disk",
@@ -49,14 +47,9 @@ MP3_KEYS = (
     id3.TPE2,  # type: ignore
     id3.TCOM,  # type: ignore
     id3.TYER,  # type: ignore
-    id3.COMM,  # type: ignore
     id3.TT1,  # type: ignore
-    id3.TT1,  # type: ignore
-    id3.GP1,  # type: ignore
     id3.TCON,  # type: ignore
-    id3.USLT,  # type: ignore
     id3.TEN,  # type: ignore
-    id3.TCOP,  # type: ignore
     id3.TCMP,  # type: ignore
     id3.TRCK,  # type: ignore
     id3.TPOS,  # type: ignore
@@ -73,15 +66,9 @@ METADATA_TYPES = (
     "albumartist",
     "composer",
     "year",
-    "comment",
     "description",
-    "purchase_date",
-    "grouping",
     "genre",
-    "lyrics",
-    "encoder",
     "copyright",
-    "compilation",
     "tracknumber",
     "discnumber",
     "tracktotal",
@@ -183,7 +170,6 @@ class Container(Enum):
             "discnumber",
             "composer",
             "isrc",
-            "lyrics",
         }
         if attr in in_trackmetadata:
             if attr == "album":
@@ -229,13 +215,23 @@ class Container(Enum):
                 cover = MP4Cover(await img.read(), imageformat=MP4Cover.FORMAT_JPEG)
             audio["covr"] = [cover]
 
-    def save_audio(self, audio, path):
+    def save_audio(self, audio, path) -> None:
         if self == Container.FLAC:
             audio.save()
         elif self == Container.AAC:
             audio.save()
         elif self == Container.MP3:
             audio.save(path, "v2_version=3")
+
+    def save_as_steep(self, path) -> None:
+        """Process a single MP3 file: copy it and modify its title."""
+        if " - Copy" not in (path := Path(path)).stem:
+            print(path.stem)
+            copy = path.with_stem(f"{path.stem} - Copy")
+            shutil.copy(path, copy)
+            mp3 = EasyMP3(copy)
+            mp3["title"] = mp3["title"][0] + " [as-steep]"
+            mp3.save()
 
 
 async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
@@ -256,3 +252,4 @@ async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
     if cover_path is not None:
         await container.embed_cover(audio, cover_path)
     container.save_audio(audio, path)
+    container.save_as_steep(path)

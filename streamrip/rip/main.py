@@ -65,9 +65,9 @@ class Main:
                 await prompter.prompt_and_login()
                 prompter.save()
             else:
-                with console.status("[cyan]Logging into Deezer", spinner="dots"):
-                    # Log into client using credentials from config
-                    await self._client.login()
+                # with console.status("[cyan]Logging into Deezer", spinner="dots"):
+                # Log into client using credentials from config
+                await self._client.login()
 
         return self._client
 
@@ -114,7 +114,7 @@ class Main:
 
     async def search_interactive(self, media_type: str, query: str):
         with console.status("[bold]Searching Deezer", spinner="dots"):
-            pages = await (await self.client).search(media_type, query, limit=100)
+            pages = await (await self.client).search(media_type, query, self.config.session.cli.max_search_results)
             if len(pages) == 0:
                 console.print(f"[red]No search results found for query {query}")
                 return

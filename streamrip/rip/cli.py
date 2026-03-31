@@ -8,7 +8,7 @@ from rich.logging import RichHandler
 from rich.traceback import install
 
 from streamrip import db
-from streamrip.config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError
+from streamrip.config import DEFAULT_CONFIG_PATH, Config
 from streamrip.console import console
 from streamrip.rip.main import Main
 
@@ -87,11 +87,6 @@ def rip(
 
     try:
         c = Config(DEFAULT_CONFIG_PATH)
-    except OutdatedConfigError as e:
-        console.print(e)
-        console.print("Auto-updating config file...")
-        Config.update_file(DEFAULT_CONFIG_PATH)
-        c = Config(DEFAULT_CONFIG_PATH)
     except Exception as e:
         console.print(
             f"Error loading config from [bold cyan]{DEFAULT_CONFIG_PATH}[/bold cyan]: {e}\n"
@@ -126,18 +121,22 @@ def database():
     """View and modify the downloads and failed downloads databases."""
 
 
+@database.command("reset")
+@click.pass_context
+def database_reset(ctx):
+    """Reset a database table."""
+    cfg: Config = ctx.obj["config"]
+
+    db.Downloads(cfg.session.database.downloads_path).reset()
+    db.Failed(cfg.session.database.failed_downloads_path).reset()
+    console.print("[green]Database reset successful.[/green]")
+
+
 @database.command("browse")
 @click.argument("table")
 @click.pass_context
 def database_browse(ctx, table):
-    """Browse the contents of a table.
-
-    Available tables:
-
-        * Downloads
-
-        * Failed
-    """
+    """Browse the contents of a table."""
     from rich.table import Table
 
     cfg: Config = ctx.obj["config"]
@@ -154,7 +153,6 @@ def database_browse(ctx, table):
     elif table.lower() == "failed":
         failed = db.Failed(cfg.session.database.failed_downloads_path)
         t = Table(title="Failed downloads database")
-        t.add_column("Source")
         t.add_column("Media Type")
         t.add_column("ID")
         for i, row in enumerate(failed.all()):

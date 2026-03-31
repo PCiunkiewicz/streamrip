@@ -235,10 +235,9 @@ class SearchResults:
         i = int(ind.group(0))
         return self.results[i - 1].preview()
 
-    def as_list(self, source: str) -> list[dict[str, str]]:
+    def as_list(self) -> list[dict[str, str]]:
         return [
             {
-                "source": source,
                 "media_type": i.media_type(),
                 "id": i.id,
                 "desc": i.summarize(),
