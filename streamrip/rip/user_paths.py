@@ -7,10 +7,9 @@ APPNAME = "streamrip"
 APP_DIR = user_config_dir(APPNAME)
 HOME = Path.home()
 
-LOG_DIR = CACHE_DIR = CONFIG_DIR = APP_DIR
+LOG_DIR = CONFIG_DIR = APP_DIR
 DEFAULT_CONFIG_PATH = os.path.join(CONFIG_DIR, "config.toml")
 
-DOWNLOADS_DIR = os.path.join(HOME, "StreamripDownloads")
 # file shipped with script
 BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 

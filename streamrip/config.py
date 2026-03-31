@@ -1,7 +1,6 @@
 """Classes and functions that manage config state."""
 
 import copy
-import functools
 import logging
 import os
 import shutil
@@ -14,14 +13,16 @@ from tomlkit.toml_document import TOMLDocument
 
 logger = logging.getLogger("streamrip")
 
+HOME = Path.home()
 APP_DIR = click.get_app_dir("streamrip")
 os.makedirs(APP_DIR, exist_ok=True)
+
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
-CURRENT_CONFIG_VERSION = "2.2.0"
+DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
+DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
+DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
 
-
-class OutdatedConfigError(Exception):
-    pass
+BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 
 
 @dataclass(slots=True)
@@ -31,13 +32,9 @@ class DeezerConfig:
     # for instructions on how to find this
     arl: str
     # 0, 1, or 2
-    # This only applies to paid Deezer subscriptions. Those using deezloader
-    # are automatically limited to quality = 1
     quality: int
     # If the target quality is not available, fallback to best quality available
     lower_quality_if_not_available: bool
-    # This allows for free 320kbps MP3 downloads from Deezer
-    # If an arl is provided, deezloader is never used
 
 
 @dataclass(slots=True)
@@ -49,16 +46,6 @@ class DatabaseConfig:
 
 
 @dataclass(slots=True)
-class ArtworkConfig:
-    # Write the image to the audio file
-    embed: bool
-    # The size of the artwork to embed. Options: thumbnail, small, large, original.
-    # "original" images can be up to 30MB, and may fail embedding.
-    # Using "large" is recommended.
-    embed_size: str
-
-
-@dataclass(slots=True)
 class MetadataConfig:
     # Sets the value of the 'ALBUM' field in the metadata to the playlist's name.
     # This is useful if your music library software organizes tracks based on album name.
@@ -66,9 +53,6 @@ class MetadataConfig:
     # If part of a playlist, sets the `tracknumber` field in the metadata to the track's
     # position in the playlist instead of its position in its album
     renumber_playlist_tracks: bool
-    # The following metadata tags won't be applied
-    # See https://github.com/nathom/streamrip/wiki/Metadata-Tag-Names for more info
-    exclude: list[str]
 
 
 @dataclass(slots=True)
@@ -104,8 +88,6 @@ class DownloadsConfig:
 
 @dataclass(slots=True)
 class CliConfig:
-    # Print "Downloading {Album name}" etc. to screen
-    text_output: bool
     # Show resolve, download progress bars
     progress_bars: bool
     # The maximum number of search results to show in the interactive menu
@@ -113,34 +95,16 @@ class CliConfig:
 
 
 @dataclass(slots=True)
-class MiscConfig:
-    version: str
-    check_for_updates: bool
-
-
-HOME = Path.home()
-DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
-DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
-DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
-BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
-assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
-
-
-@dataclass(slots=True)
 class ConfigData:
     toml: TOMLDocument
     downloads: DownloadsConfig
-
     deezer: DeezerConfig
 
     filepaths: FilepathsConfig
-    artwork: ArtworkConfig
     metadata: MetadataConfig
 
     cli: CliConfig
     database: DatabaseConfig
-
-    misc: MiscConfig
 
     _modified: bool = False
 
@@ -148,36 +112,22 @@ class ConfigData:
     def from_toml(cls, toml_str: str):
         # TODO: handle the mistake where Windows people forget to escape backslash
         toml = parse(toml_str)
-        if (v := toml["misc"]["version"]) != CURRENT_CONFIG_VERSION:  # type: ignore
-            raise OutdatedConfigError(
-                f"Need to update config from {v} to {CURRENT_CONFIG_VERSION}",
-            )
-
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
         deezer = DeezerConfig(**toml["deezer"])  # type: ignore
-        artwork = ArtworkConfig(**toml["artwork"])  # type: ignore
         filepaths = FilepathsConfig(**toml["filepaths"])  # type: ignore
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
         cli = CliConfig(**toml["cli"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
-        misc = MiscConfig(**toml["misc"])  # type: ignore
 
         return cls(
             toml=toml,
             downloads=downloads,
             deezer=deezer,
-            artwork=artwork,
             filepaths=filepaths,
             metadata=metadata,
             cli=cli,
             database=database,
-            misc=misc,
         )
-
-    @classmethod
-    def defaults(cls):
-        with open(BLANK_CONFIG_PATH) as f:
-            return cls.from_toml(f.read())
 
     def set_modified(self):
         self._modified = True
@@ -189,7 +139,6 @@ class ConfigData:
     def update_toml(self):
         update_toml_section_from_config(self.toml["downloads"], self.downloads)
         update_toml_section_from_config(self.toml["deezer"], self.deezer)
-        update_toml_section_from_config(self.toml["artwork"], self.artwork)
         update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
         update_toml_section_from_config(self.toml["metadata"], self.metadata)
         update_toml_section_from_config(self.toml["cli"], self.cli)
@@ -204,6 +153,8 @@ def update_toml_section_from_config(toml_section, config):
 class Config:
     def __init__(self, path: str, /):
         self.path = path
+        if not os.path.isfile(path):
+            set_user_defaults(path)
 
         with open(path) as toml_file:
             self.file: ConfigData = ConfigData.from_toml(toml_file.read())
@@ -218,30 +169,6 @@ class Config:
             self.file.update_toml()
             toml_file.write(dumps(self.file.toml))
 
-    @staticmethod
-    def _update_file(old_path: str, new_path: str):
-        """Updates the current config based on a newer config `new_toml`."""
-        with open(new_path) as new_conf:
-            new_toml = parse(new_conf.read())
-
-        toml_set_user_defaults(new_toml)
-
-        with open(old_path) as old_conf:
-            old_toml = parse(old_conf.read())
-
-        update_config(old_toml, new_toml)
-
-        with open(old_path, "w") as f:
-            f.write(dumps(new_toml))
-
-    @classmethod
-    def update_file(cls, path: str):
-        cls._update_file(path, BLANK_CONFIG_PATH)
-
-    @classmethod
-    def defaults(cls):
-        return cls(BLANK_CONFIG_PATH)
-
     def __enter__(self):
         return self
 
@@ -255,64 +182,9 @@ def set_user_defaults(path: str, /):
 
     with open(path) as f:
         toml = parse(f.read())
-
-    toml_set_user_defaults(toml)
-
-    with open(path, "w") as f:
-        f.write(dumps(toml))
-
-
-def toml_set_user_defaults(toml: TOMLDocument):
     toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
     toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
     toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
 
-
-def _get_dict_keys_r(d: dict) -> set[tuple]:
-    """Get all possible key combinations in nested dicts.
-
-    See tests/test_config.py for example.
-    """
-    keys = d.keys()
-    ret = set()
-    for cur in keys:
-        val = d[cur]
-        if isinstance(val, dict):
-            ret.update((cur, *remaining) for remaining in _get_dict_keys_r(val))
-        else:
-            ret.add((cur,))
-    return ret
-
-
-def _nested_get(dictionary, *keys, default=None):
-    return functools.reduce(
-        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
-        keys,
-        dictionary,
-    )
-
-
-def _nested_set(dictionary, *keys, val):
-    """Nested set. Throws exception if keys are invalid."""
-    assert len(keys) > 0
-    final = functools.reduce(lambda d, key: d.get(key), keys[:-1], dictionary)
-    final[keys[-1]] = val
-
-
-def update_config(old_with_data: dict, new_without_data: dict):
-    """Used to update config when a new config version is detected.
-
-    All data associated with keys that are shared between the old and
-    new configs are copied from old to new. The remaining keep their default value.
-
-    Assumes that new_without_data contains default config values of the
-    latest version.
-    """
-    old_keys = _get_dict_keys_r(old_with_data)
-    new_keys = _get_dict_keys_r(new_without_data)
-    common = old_keys.intersection(new_keys)
-    common.discard(("misc", "version"))
-
-    for k in common:
-        old_val = _nested_get(old_with_data, *k)
-        _nested_set(new_without_data, *k, val=old_val)
+    with open(path, "w") as f:
+        f.write(dumps(toml))

@@ -59,7 +59,6 @@ class Artist(Media):
         _albums = filter(self._features, _albums)
         _albums = filter(self._non_studio_albums, _albums)
         _albums = filter(self._non_albums, _albums)
-        # _albums = filter(self._non_remaster, _albums) # noqa
         return list(_albums)
 
     # Will not fail on any nonempty string
@@ -123,12 +122,6 @@ class Artist(Media):
         """
         return self._extra_re.search(a.meta.album) is None
 
-    _remaster_re = re.compile(r"(?i)(re)?master(ed)?")
-
-    def _non_remaster(self, a: Album) -> bool:
-        """Filter out albums that are not remasters."""
-        return self._remaster_re.search(a.meta.album) is not None
-
     def _non_albums(self, a: Album) -> bool:
         """Filter out singles."""
         return len(a.tracks) > 1
@@ -152,7 +145,7 @@ class PendingArtist(Pending):
             resp = await self.client.get_metadata(self.id, "artist")
         except NonStreamableError as e:
             logger.error(
-                f"Artist {self.id} not available to stream on {self.client.source} ({e})",
+                f"Artist {self.id} not available to stream on Deezer ({e})",
             )
             return None
 
