@@ -64,7 +64,7 @@ class PendingAlbum(Pending):
             resp = await self.client.get_metadata(self.id, "album")
         except NonStreamableError as e:
             logger.error(
-                f"Album {self.id} not available to stream on {self.client.source} ({e})",
+                f"Album {self.id} not available to stream on Deezer ({e})",
             )
             return None
 
@@ -76,7 +76,7 @@ class PendingAlbum(Pending):
 
         if meta is None:
             logger.error(
-                f"Album {self.id} not available to stream on {self.client.source}",
+                f"Album {self.id} not available to stream on Deezer",
             )
             return None
 
@@ -87,7 +87,6 @@ class PendingAlbum(Pending):
             self.client.session,
             folder,
             meta.covers,
-            self.config.session.artwork,
         )
         pending_tracks = [
             PendingTrack(

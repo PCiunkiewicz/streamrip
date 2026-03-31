@@ -20,11 +20,11 @@ class DatabaseInterface(ABC):
         pass
 
     @abstractmethod
-    def add(self, kvs):
+    def add(self, items):
         pass
 
     @abstractmethod
-    def remove(self, kvs):
+    def remove(self, items):
         pass
 
     @abstractmethod
@@ -169,7 +169,6 @@ class Failed(DatabaseBase):
 
     name = "failed_downloads"
     structure: Final[dict] = {
-        "source": ["text"],
         "media_type": ["text"],
         "id": ["text", "unique"],
     }
@@ -186,8 +185,5 @@ class Database:
     def set_downloaded(self, item_id: str):
         self.downloads.add((item_id,))
 
-    def get_failed_downloads(self) -> list[tuple[str, str, str]]:
-        return self.failed.all()
-
-    def set_failed(self, source: str, media_type: str, id: str):
-        self.failed.add((source, media_type, id))
+    def set_failed(self, media_type: str, id: str):
+        self.failed.add((media_type, id))

@@ -55,8 +55,6 @@ class DeezerClient:
 
     """
 
-    source = "deezer"
-    max_quality = 2
     session: aiohttp.ClientSession
     logged_in: bool
 

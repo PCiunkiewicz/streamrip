@@ -64,7 +64,7 @@ class Track(Media):
                     await self.downloadable.download(self.download_path, callback)
                 except Exception as e:
                     logger.error(f"Persistent error downloading track '{self.meta.title}', skipping: {e}")
-                    self.db.set_failed(self.downloadable.source, "track", self.meta.info.id)
+                    self.db.set_failed("track", self.meta.info.id)
 
     async def postprocess(self):
         if self.is_single:
@@ -105,11 +105,10 @@ class PendingTrack(Pending):
             )
             return None
 
-        source = self.client.source
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
-            logger.error(f"Track {self.id} not available for stream on {source}: {e}")
+            logger.error(f"Track {self.id} not available for stream on Deezer: {e}")
             return None
 
         try:
@@ -119,8 +118,8 @@ class PendingTrack(Pending):
             return None
 
         if meta is None:
-            logger.error(f"Track {self.id} not available for stream on {source}")
-            self.db.set_failed(source, "track", self.id)
+            logger.error(f"Track {self.id} not available for stream on Deezer")
+            self.db.set_failed("track", self.id)
             return None
 
         quality = self.config.session.deezer.quality
@@ -172,9 +171,9 @@ class PendingSingle(Pending):
             return None
 
         if album is None:
-            self.db.set_failed(self.client.source, "track", self.id)
+            self.db.set_failed("track", self.id)
             logger.error(
-                f"Cannot stream track (am) ({self.id}) on {self.client.source}",
+                f"Cannot stream track (am) ({self.id}) on Deezer",
             )
             return None
 
@@ -185,14 +184,14 @@ class PendingSingle(Pending):
             return None
 
         if meta is None:
-            self.db.set_failed(self.client.source, "track", self.id)
+            self.db.set_failed("track", self.id)
             logger.error(
-                f"Cannot stream track (tm) ({self.id}) on {self.client.source}",
+                f"Cannot stream track (tm) ({self.id}) on Deezer",
             )
             return None
 
         config = self.config.session
-        quality = getattr(config, self.client.source).quality
+        quality = config.deezer.quality
         assert isinstance(quality, int)
         parent = config.downloads.folder
         if config.filepaths.add_singles_to_folder:
@@ -228,6 +227,5 @@ class PendingSingle(Pending):
             self.client.session,
             folder,
             covers,
-            self.config.session.artwork,
         )
         return embed_path

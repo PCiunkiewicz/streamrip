@@ -3,10 +3,6 @@ from dataclasses import dataclass
 
 from streamrip.metadata.track import TrackMetadata
 
-NON_STREAMABLE = "_non_streamable"
-ORIGINAL_DOWNLOAD = "_original_download"
-NOT_RESOLVED = "_not_resolved"
-
 logger = logging.getLogger("streamrip")
 
 

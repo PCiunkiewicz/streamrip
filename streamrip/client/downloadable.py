@@ -8,7 +8,6 @@ import os
 import re
 import shutil
 import tempfile
-import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,13 +24,6 @@ logger = logging.getLogger("streamrip")
 
 
 BLOWFISH_SECRET = "g4el58wc0zvf9na1"
-
-
-def generate_temp_path(url: str):
-    return os.path.join(
-        tempfile.gettempdir(),
-        f"__streamrip_{hash(url)}_{time.time()}.download",
-    )
 
 
 async def fast_async_download(path, url, headers, callback):
@@ -64,7 +56,6 @@ class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
     extension: str
-    source: str = "Unknown"
     _size_base: int | None = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
@@ -101,13 +92,11 @@ class BasicDownloadable(Downloadable):
         session: aiohttp.ClientSession,
         url: str,
         extension: str,
-        source: str | None = None,
     ):
         self.session = session
         self.url = url
         self.extension = extension
         self._size = None
-        self.source: str = source or "Unknown"
 
     async def _download(self, path: str, callback):
         await fast_async_download(path, self.url, self.session.headers, callback)
@@ -120,7 +109,6 @@ class DeezerDownloadable(Downloadable):
         logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
-        self.source: str = "deezer"
         qualities_available = [i for i, size in enumerate(info["quality_to_size"]) if size > 0]
         if len(qualities_available) == 0:
             raise NonStreamableError(

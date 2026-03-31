@@ -46,16 +46,16 @@ class PendingPlaylistTrack(Pending):
         album = AlbumMetadata.from_track_resp(resp)
         if album is None:
             logger.error(
-                f"Track ({self.id}) not available for stream on {self.client.source}",
+                f"Track ({self.id}) not available for stream on Deezer",
             )
-            self.db.set_failed(self.client.source, "track", self.id)
+            self.db.set_failed("track", self.id)
             return None
         meta = TrackMetadata.from_resp(album, resp)
         if meta is None:
             logger.error(
-                f"Track ({self.id}) not available for stream on {self.client.source}",
+                f"Track ({self.id}) not available for stream on Deezer",
             )
-            self.db.set_failed(self.client.source, "track", self.id)
+            self.db.set_failed("track", self.id)
             return None
 
         c = self.config.session.metadata
@@ -72,7 +72,7 @@ class PendingPlaylistTrack(Pending):
             )
         except NonStreamableError as e:
             logger.error(f"Error fetching download info for track {self.id}: {e}")
-            self.db.set_failed(self.client.source, "track", self.id)
+            self.db.set_failed("track", self.id)
             return None
 
         return Track(
@@ -89,7 +89,6 @@ class PendingPlaylistTrack(Pending):
             self.client.session,
             folder,
             covers,
-            self.config.session.artwork,
         )
         return embed_path
 
@@ -150,7 +149,7 @@ class PendingPlaylist(Pending):
             resp = await self.client.get_metadata(self.id, "playlist")
         except NonStreamableError as e:
             logger.error(
-                f"Playlist {self.id} not available to stream on {self.client.source} ({e})",
+                f"Playlist {self.id} not available to stream on Deezer ({e})",
             )
             return None
 

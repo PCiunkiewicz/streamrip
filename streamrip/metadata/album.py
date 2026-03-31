@@ -15,9 +15,6 @@ COPYRIGHT = "\u00a9"
 logger = logging.getLogger("streamrip")
 
 
-genre_clean = re.compile(r"([^\u2192\/]+)")
-
-
 @dataclass(slots=True)
 class AlbumInfo:
     id: str
@@ -41,15 +38,9 @@ class AlbumMetadata:
     tracktotal: int
     disctotal: int = 1
     albumcomposer: str | None = None
-    comment: str | None = None
-    compilation: str | None = None
     copyright: str | None = None
     date: str | None = None
     description: str | None = None
-    encoder: str | None = None
-    grouping: str | None = None
-    lyrics: str | None = None
-    purchase_date: str | None = None
 
     def get_genres(self) -> str:
         return ", ".join(self.genre)
@@ -124,16 +115,10 @@ class AlbumMetadata:
             genre=genres,
             covers=cover_urls,
             albumcomposer=albumcomposer,
-            comment=None,
-            compilation=None,
             copyright=_copyright,
             date=date,
             description=description,
             disctotal=disctotal,
-            encoder=None,
-            grouping=None,
-            lyrics=None,
-            purchase_date=None,
             tracktotal=tracktotal,
         )
 
@@ -166,16 +151,10 @@ class AlbumMetadata:
             genre=[],
             covers=covers,
             albumcomposer=None,
-            comment=None,
-            compilation=None,
             copyright=None,
             date=date,
             description=None,
             disctotal=1,
-            encoder=None,
-            grouping=None,
-            lyrics=None,
-            purchase_date=None,
             tracktotal=1,
         )
 

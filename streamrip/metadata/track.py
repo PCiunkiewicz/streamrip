@@ -30,7 +30,6 @@ class TrackMetadata:
     discnumber: int
     composer: str | None
     isrc: str | None = None
-    lyrics: str | None = ""
 
     @classmethod
     def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata | None:
