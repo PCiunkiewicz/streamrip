@@ -65,9 +65,9 @@ class Main:
                 await prompter.prompt_and_login()
                 prompter.save()
             else:
-                # with console.status("[cyan]Logging into Deezer", spinner="dots"):
-                # Log into client using credentials from config
-                await self._client.login()
+                with console.status("[cyan]Logging into Deezer", spinner="dots"):
+                    # Log into client using credentials from config
+                    await self._client.login()
 
         return self._client
 
@@ -112,9 +112,10 @@ class Main:
             total_items = len(self.media)
             logger.info(f"Download completed with {failed_items} failed items out of {total_items} total items.")
 
-    async def search_interactive(self, media_type: str, query: str):
+    async def search_interactive(self, media_type: str, query: str) -> None:
+        client = await self.client
         with console.status("[bold]Searching Deezer", spinner="dots"):
-            pages = await (await self.client).search(media_type, query, self.config.session.cli.max_search_results)
+            pages = await client.search(media_type, query, self.config.session.cli.max_search_results)
             if len(pages) == 0:
                 console.print(f"[red]No search results found for query {query}")
                 return
@@ -124,7 +125,7 @@ class Main:
             search_results.summaries(),
             preview_command=search_results.preview,
             preview_size=0.5,
-            title=(f"Results for {media_type} '{query}' from Deezer\nSPACE - select, ENTER - download, ESC - exit"),
+            title=(f"Results for {media_type}='{query}'\nSPACE - select, ENTER - download, ESC - exit, / - filter"),
             cycle_cursor=True,
             clear_screen=True,
             multi_select=True,
@@ -138,6 +139,27 @@ class Main:
                 [(item.media_type(), item.id) for item in choices],
             )
 
+    def select_media_type(self) -> str | None:
+        media_types = ["track", "album", "artist", "playlist", "playlist (bean)"]
+        menu = TerminalMenu(
+            [t.capitalize() for t in media_types],
+            title=("Search type:"),
+            cycle_cursor=True,
+            clear_screen=True,
+        )
+        choice: int = menu.show()  # type: ignore
+        if choice is None:
+            console.print("[yellow]No items chosen. Exiting.")
+        else:
+            return media_types[choice]
+
+    def prompt_search_query(self, media_type: str | None) -> str | None:
+        if media_type == "playlist (bean)":
+            return "all"
+        if media_type:
+            query = console.input(f"Search query ({media_type}):\n[red]>[/red] ")
+            return query
+
     async def __aenter__(self):
         return self
 
@@ -148,7 +170,4 @@ class Main:
 
         # close global progress bar manager
         clear_progress()
-        # We remove artwork tempdirs here because multiple singles
-        # may be able to share downloaded artwork in the same `rip` session
-        # We don't know that a cover will not be used again until end of execution
         remove_artwork_tempdirs()

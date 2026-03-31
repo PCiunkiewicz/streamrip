@@ -181,6 +181,7 @@ class PlaylistSummary(Summary):
         name = item.get("name") or item.get("title") or "Unknown"
         creator = (
             (item.get("publisher_metadata") and item["publisher_metadata"]["artist"])
+            or item.get("creator", {}).get("name")
             or item.get("owner", {}).get("name")
             or item.get("user", {}).get("username")
             or item.get("user", {}).get("name")
@@ -209,7 +210,7 @@ class SearchResults:
             summary_type = AlbumSummary
         elif media_type == "artist":
             summary_type = ArtistSummary
-        elif media_type == "playlist":
+        elif media_type.startswith("playlist"):
             summary_type = PlaylistSummary
         else:
             raise Exception(f"invalid media type {media_type}")

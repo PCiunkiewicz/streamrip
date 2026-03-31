@@ -152,9 +152,14 @@ class DeezerClient:
         return artist
 
     async def search(self, media_type: str, query: str, limit: int = 200) -> list[dict]:
-        # TODO: use limit parameter
         try:
-            search_function = getattr(self.client.api, f"search_{media_type}")
+            if media_type == "playlist (bean)":
+
+                def search_function(_, limit) -> dict:
+                    return self.client.api.get_user_playlists(user_id="6305167303", limit=-1)
+
+            else:
+                search_function = getattr(self.client.api, f"search_{media_type}")
         except AttributeError:
             raise Exception(f"Invalid media type {media_type}")
 

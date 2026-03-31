@@ -167,11 +167,11 @@ def database_browse(ctx, table):
 
 
 @rip.command()
-@click.argument("media-type", required=True)
-@click.argument("query", required=True)
+@click.argument("media-type", required=False)
+@click.argument("query", required=False)
 @click.pass_context
 @coro
-async def search(ctx, media_type, query):
+async def search(ctx, media_type: str | None = None, query: str | None = None):
     """Search for content using Deezer.
 
     Example:
@@ -179,9 +179,12 @@ async def search(ctx, media_type, query):
     """
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
-            await main.search_interactive(media_type, query)
-            await main.resolve()
-            await main.rip()
+            media_type = media_type or main.select_media_type()
+            query = query or main.prompt_search_query(media_type)
+            if media_type and query:
+                await main.search_interactive(media_type, query)
+                await main.resolve()
+                await main.rip()
 
 
 if __name__ == "__main__":
